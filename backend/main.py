@@ -1,4 +1,13 @@
 from typing import Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
+
+from .auth import get_password_hash, verify_password, create_access_token, get_current_user, get_db
+from .models import User
+
+
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -17,6 +26,29 @@ app.add_middleware(
 
 # Pydantic request/response model
 class Item(BaseModel):
+    pass
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    created_at: Optional[str]
+
+    class Config:
+        orm_mode = True
+
+# Pydantic request/response model
+class Item(BaseModel):
     id: Optional[int] = None
     name: str
     description: Optional[str] = None
@@ -25,6 +57,34 @@ class Item(BaseModel):
 # Simple in-memory store for demonstration
 _db: dict[int, Item] = {}
 _next_id = 1
+
+
+@app.post("/register", response_model=UserOut, status_code=201)
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User already exists")
+    hashed = get_password_hash(req.password)
+    user = User(email=req.email, hashed_password=hashed)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.post("/login", response_model=TokenResponse)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+    token = create_access_token(subject=str(user.id))
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/protected", response_model=UserOut)
+def protected(current: User = Depends(get_current_user)):
+    return current
+
 
 # Dependency example
 def common_query_params(q: Optional[str] = None, limit: int = 10):
@@ -38,6 +98,8 @@ def write_log(message: str) -> None:
 @app.on_event("startup")
 async def on_startup():
     # startup tasks like DB connection would go here
+    from .db import init_db
+    init_db()
     write_log("startup")
 
 @app.on_event("shutdown")
