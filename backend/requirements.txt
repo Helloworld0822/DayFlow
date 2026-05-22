@@ -20,3 +20,4 @@ google-auth==2.22.0
 google-auth-oauthlib==0.9.0
 google-api-python-client==2.86.0
 requests==2.32.0
+openai==0.27.8
