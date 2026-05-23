@@ -9,11 +9,24 @@ from .models import User
 
 
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI(title="AI Schedule Manage - Backend")
+
+# Add session middleware for OAuth callback state if needed
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'dev-session-secret'))
+
+# include google routes
+from .google_auth import router as google_router
+app.include_router(google_router, prefix="/google")
+
+# include ai routes
+from .ai_routes import router as ai_router
+app.include_router(ai_router, prefix="/ai")
 
 # CORS middleware
 app.add_middleware(
