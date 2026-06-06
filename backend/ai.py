@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Any
 import openai
 from datetime import datetime
+import requests
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if OPENAI_API_KEY:
@@ -91,31 +92,66 @@ def find_free_days(events: List[Dict[str, Any]], start_date: str, end_date: str)
     return free
 
 
-def fetch_events_from_google(calendarId: str, timeMin: str, timeMax: str) -> List[Dict[str, Any]]:
-    """Fetch events between timeMin and timeMax using service credentials pointed by GOOGLE_CREDENTIALS_JSON env var.
-    timeMin/timeMax should be RFC3339 strings (ISO with time), e.g. 2026-05-01T00:00:00Z
-    Returns list of event dicts with at least 'start' and 'summary'.
-    """
-    from google.oauth2.service_account import Credentials as SACreds
-    from googleapiclient.discovery import build
-    import os
+def _fetch_events_with_api_key(calendarId: str, timeMin: str, timeMax: str) -> List[Dict[str, Any]]:
+    api_key = os.getenv("GOOGLE_CALENDAR_API_KEY") or os.getenv("GOOGLE_CALENDER_API_KEY")
+    if not api_key:
+        raise RuntimeError("GOOGLE_CALENDAR_API_KEY not set")
 
-    creds_path = os.getenv("GOOGLE_CREDENTIALS_JSON")
-    if not creds_path or not os.path.exists(creds_path):
-        raise RuntimeError("GOOGLE_CREDENTIALS_JSON not set or file missing")
+    url = f"https://www.googleapis.com/calendar/v3/calendars/{requests.utils.quote(calendarId, safe='')}/events"
+    params = {
+        "key": api_key,
+        "timeMin": timeMin,
+        "timeMax": timeMax,
+        "singleEvents": "true",
+        "orderBy": "startTime",
+        "maxResults": 2500,
+    }
 
-    creds = SACreds.from_service_account_file(creds_path, scopes=["https://www.googleapis.com/auth/calendar.readonly"])
-    service = build("calendar", "v3", credentials=creds)
-
-    events = []
-    page_token = None
+    events: List[Dict[str, Any]] = []
+    page_token: str | None = None
     while True:
-        resp = service.events().list(calendarId=calendarId, timeMin=timeMin, timeMax=timeMax, singleEvents=True, orderBy="startTime", pageToken=page_token).execute()
-        items = resp.get("items", [])
-        for it in items:
-            start = it.get("start", {}).get("dateTime") or it.get("start", {}).get("date")
-            events.append({"start": start, "summary": it.get("summary", "(no title)")})
-        page_token = resp.get("nextPageToken")
+        query = dict(params)
+        if page_token:
+            query["pageToken"] = page_token
+        response = requests.get(url, params=query, timeout=30)
+        if response.status_code != 200:
+            raise RuntimeError(f"Google Calendar API error {response.status_code}: {response.text}")
+        data = response.json()
+        for item in data.get("items", []):
+            start = (item.get("start") or {}).get("dateTime") or (item.get("start") or {}).get("date")
+            events.append({"start": start, "summary": item.get("summary", "(no title)")})
+        page_token = data.get("nextPageToken")
         if not page_token:
             break
     return events
+
+
+def fetch_events_from_google(calendarId: str, timeMin: str, timeMax: str, credentials=None) -> List[Dict[str, Any]]:
+    """Fetch events between timeMin and timeMax using OAuth credentials or a public API key.
+    timeMin/timeMax should be RFC3339 strings (ISO with time), e.g. 2026-05-01T00:00:00Z
+    Returns list of event dicts with at least 'start' and 'summary'.
+    """
+    from googleapiclient.discovery import build
+    if credentials is not None:
+        service = build("calendar", "v3", credentials=credentials)
+
+        events: List[Dict[str, Any]] = []
+        page_token = None
+        while True:
+            resp = service.events().list(
+                calendarId=calendarId,
+                timeMin=timeMin,
+                timeMax=timeMax,
+                singleEvents=True,
+                orderBy="startTime",
+                pageToken=page_token,
+            ).execute()
+            for item in resp.get("items", []):
+                start = (item.get("start") or {}).get("dateTime") or (item.get("start") or {}).get("date")
+                events.append({"start": start, "summary": item.get("summary", "(no title)")})
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return events
+
+    return _fetch_events_with_api_key(calendarId, timeMin, timeMax)

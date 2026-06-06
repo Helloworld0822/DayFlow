@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List, Dict, Any
 from .ai import summarize_events, predict_busy_days, find_free_days, fetch_events_from_google
 from .auth import get_db
+from .google_auth import get_google_credentials_from_session
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -35,6 +36,7 @@ def free_days(payload: Dict[str, Any]):
 
 
 @router.get("/google/fetch")
-def google_fetch(calendarId: str, timeMin: str, timeMax: str):
-    events = fetch_events_from_google(calendarId, timeMin, timeMax)
+def google_fetch(request: Request, calendarId: str, timeMin: str, timeMax: str):
+    credentials = get_google_credentials_from_session(request)
+    events = fetch_events_from_google(calendarId, timeMin, timeMax, credentials=credentials)
     return {"events": events}

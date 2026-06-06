@@ -1,15 +1,24 @@
 from typing import Optional
+from datetime import datetime
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 
-from backend.auth import get_password_hash, verify_password, create_access_token, get_current_user, get_db
+from backend.auth import (
+    clear_auth_cookie,
+    create_access_token,
+    get_current_user,
+    get_db,
+    get_password_hash,
+    set_auth_cookie,
+    verify_password,
+)
 from backend.models import User
 
 
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Response, BackgroundTasks, UploadFile, File
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -35,7 +44,7 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'de
 
 # include google routes
 from backend.google_auth import router as google_router
-app.include_router(google_router, prefix="/google")
+app.include_router(google_router)
 
 # include ai routes
 from backend.ai_routes import router as ai_router
@@ -60,6 +69,12 @@ class RegisterRequest(BaseModel):
     password: str
 
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+    remember_me: bool = False
+
+
 
 
 class TokenResponse(BaseModel):
@@ -68,12 +83,11 @@ class TokenResponse(BaseModel):
 
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: EmailStr
-    created_at: Optional[str]
-
-    class Config:
-        orm_mode = True
+    created_at: Optional[datetime]
 
 # Pydantic request/response model
 class Item(BaseModel):
@@ -92,7 +106,10 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
-    hashed = get_password_hash(req.password)
+    try:
+        hashed = get_password_hash(req.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     user = User(email=req.email, hashed_password=hashed)
     db.add(user)
     db.commit()
@@ -100,10 +117,44 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return user
 
 
+@app.post("/auth/login", response_model=UserOut)
+def auth_login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+    try:
+        valid_password = verify_password(payload.password, user.hashed_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not valid_password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+
+    token = create_access_token(subject=str(user.id))
+    set_auth_cookie(response, token, payload.remember_me)
+    return user
+
+
+@app.post("/auth/logout")
+def auth_logout(response: Response):
+    clear_auth_cookie(response)
+    return {"ok": True}
+
+
+@app.get("/auth/me", response_model=UserOut)
+def auth_me(current: User = Depends(get_current_user)):
+    return current
+
+
 @app.post("/login", response_model=TokenResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+    try:
+        valid_password = verify_password(form_data.password, user.hashed_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not valid_password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     token = create_access_token(subject=str(user.id))
     return {"access_token": token, "token_type": "bearer"}

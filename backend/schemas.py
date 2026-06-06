@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ScheduleIn(BaseModel):
@@ -11,6 +11,8 @@ class ScheduleIn(BaseModel):
 
 
 class ScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     start: str
     end: str
@@ -18,6 +20,3 @@ class ScheduleOut(BaseModel):
     description: Optional[str]
     category: str
     created_at: Optional[str]
-
-    class Config:
-        orm_mode = True
