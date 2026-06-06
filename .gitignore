@@ -1,0 +1,8 @@
+backend/secrets/client_secret.json
+__pycache__/
+*.pyc
+*.pyo
+*.log
+node_modules/
+dist/
+.env

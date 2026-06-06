@@ -3,9 +3,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 
-from .auth import get_password_hash, verify_password, create_access_token, get_current_user, get_db
-from .models import User
+from backend.auth import get_password_hash, verify_password, create_access_token, get_current_user, get_db
+from backend.models import User
 
 
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File
@@ -13,19 +14,31 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+from backend.db import init_db, engine
 
-app = FastAPI(title="AI Schedule Manage - Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    write_log("startup")
+    try:
+        yield
+    finally:
+        write_log("shutdown")
+        engine.dispose()
+
+
+app = FastAPI(title="AI Schedule Manage - Backend", lifespan=lifespan)
 
 # Add session middleware for OAuth callback state if needed
 from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'dev-session-secret'))
 
 # include google routes
-from .google_auth import router as google_router
+from backend.google_auth import router as google_router
 app.include_router(google_router, prefix="/google")
 
 # include ai routes
-from .ai_routes import router as ai_router
+from backend.ai_routes import router as ai_router
 app.include_router(ai_router, prefix="/ai")
 
 # CORS middleware
@@ -110,25 +123,14 @@ def write_log(message: str) -> None:
     with open("app.log", "a") as f:
         f.write(message + "\n")
 
-@app.on_event("startup")
-async def on_startup():
-    # startup tasks like DB connection would go here
-    from .db import init_db
-    init_db()
-    write_log("startup")
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    write_log("shutdown")
-
 @app.get("/", tags=["health"])
 async def read_root():
             return {"status": "ok", "service": "AI Schedule Manage"}
 
 
 # include schedules router (moved to schedules.py)
-from .schedules import router as schedules_router
+from backend.schedules import router as schedules_router
 app.include_router(schedules_router, prefix="/schedules")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
