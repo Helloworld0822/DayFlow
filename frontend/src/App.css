@@ -125,6 +125,20 @@
   border: 1px solid #a7f3d0;
 }
 
+@media (prefers-color-scheme: dark) {
+  .alert--error {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+  }
+
+  .alert--success {
+    background: rgba(52, 211, 153, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+  }
+}
+
 .button,
 .button--link {
   display: inline-flex;
@@ -168,6 +182,14 @@
   transform: none;
 }
 
+@media (prefers-color-scheme: dark) {
+  .button--danger {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.3);
+  }
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -176,7 +198,16 @@
 .field--inline {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
+  white-space: nowrap;
+  justify-content: flex-start;
+}
+
+.field--inline input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .field span {

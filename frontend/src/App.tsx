@@ -3,7 +3,6 @@ import heroImg from './assets/hero.png'
 import './App.css'
 import {
   createSchedule,
-  fetchBackendStatus,
   fetchGoogleEvents,
   findFreeDays,
   getErrorMessage,
@@ -19,8 +18,6 @@ import {
   type ScheduleCategory,
   type UserProfile,
 } from './lib/api'
-
-type BackendState = 'idle' | 'loading' | 'ready' | 'error'
 
 function pad(value: number) {
   return String(value).padStart(2, '0')
@@ -76,8 +73,6 @@ function scheduleLabel(category: ScheduleCategory) {
 
 function App() {
   const today = new Date()
-  const [backendState, setBackendState] = useState<BackendState>('idle')
-  const [backendMessage, setBackendMessage] = useState('')
 
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -138,18 +133,6 @@ function App() {
     }
   }
 
-  const refreshBackend = useCallback(async () => {
-    try {
-      setBackendState('loading')
-      const health = await fetchBackendStatus()
-      setBackendMessage(health.service ? `${health.status} · ${health.service}` : health.status)
-      setBackendState('ready')
-    } catch (error) {
-      setBackendMessage(getErrorMessage(error))
-      setBackendState('error')
-    }
-  }, [])
-
   const refreshSchedules = useCallback(async () => {
     try {
       setScheduleLoading(true)
@@ -178,10 +161,9 @@ function App() {
   }, [])
 
   useEffect(() => {
-    void refreshBackend()
     void refreshSchedules()
     void refreshProtectedProfile()
-  }, [refreshBackend, refreshSchedules, refreshProtectedProfile])
+  }, [refreshSchedules, refreshProtectedProfile])
 
   function openAddModal(dateIso = selectedDate) {
     setSelectedDate(dateIso)
@@ -219,7 +201,11 @@ function App() {
   }
 
   async function handleRegister() {
-    if (!authEmail || !authPassword) return
+    if (!authEmail || !authPassword) {
+      setAuthError('이메일과 비밀번호를 입력해주세요.')
+      setAuthMessage('')
+      return
+    }
     try {
       setAuthLoading(true)
       setAuthError('')
@@ -234,7 +220,11 @@ function App() {
   }
 
   async function handleLogin() {
-    if (!authEmail || !authPassword) return
+    if (!authEmail || !authPassword) {
+      setAuthError('이메일과 비밀번호를 입력해주세요.')
+      setAuthMessage('')
+      return
+    }
     try {
       setAuthLoading(true)
       setAuthError('')
@@ -331,10 +321,8 @@ function App() {
           <img src={heroImg} width={44} height={44} alt="logo" />
           <div>
             <h1>Simple Calendar</h1>
-            <p>Backend 연결 대시보드</p>
           </div>
         </div>
-        <div className={`status status--${backendState}`}>{backendMessage || 'checking...'}</div>
       </header>
 
       <main className="layout">
@@ -342,7 +330,6 @@ function App() {
           <div className="card__header">
             <div>
               <h2>일정</h2>
-              <p>백엔드 /schedules와 실시간 동기화</p>
             </div>
             <div className="toolbar">
               <button className="button button--ghost" onClick={() => void refreshSchedules()}>
@@ -431,7 +418,7 @@ function App() {
             </div>
 
             <div className="panel">
-              <h3>{scheduleLoading ? '동기화 중...' : '백엔드 일정 목록'}</h3>
+              <h3>{scheduleLoading ? '불러오는 중...' : '내 일정'}</h3>
               <div className="stack">
                 {schedules.slice(0, 6).map((event) => (
                   <div key={event.id} className="detail-row detail-row--compact">
@@ -450,7 +437,6 @@ function App() {
             <div className="card__header">
               <div>
                 <h2>계정</h2>
-                <p>/register, /auth/login, /auth/me 연결</p>
               </div>
             </div>
 
@@ -461,13 +447,8 @@ function App() {
               <div className="stack">
                 <div className="detail-row">
                   <strong>{authProfile?.email}</strong>
-                  <span>user #{authProfile?.id}</span>
                 </div>
-                <p>쿠키로 로그인 상태를 유지하고 있습니다.</p>
                 <div className="toolbar">
-                  <button className="button button--ghost" onClick={() => void refreshProtectedProfile()}>
-                    세션 확인
-                  </button>
                   <button className="button button--danger" onClick={() => void handleLogout()}>
                     로그아웃
                   </button>
@@ -475,7 +456,7 @@ function App() {
               </div>
             ) : (
               <div className="stack">
-                <p>로그인이 필요합니다. 화면 중앙 모달에서 진행하세요.</p>
+                <p>로그인이 필요합니다.</p>
               </div>
             )}
           </section>
@@ -483,8 +464,7 @@ function App() {
           <section className="card">
             <div className="card__header">
               <div>
-                <h2>Google</h2>
-                <p>/google/login, /ai/google/fetch</p>
+                <h2>Google 캘린더</h2>
               </div>
             </div>
 
@@ -492,22 +472,22 @@ function App() {
 
             <div className="stack">
               <a className="button button--primary button--link" href="/google/login">
-                Google 연결
+                Google 계정 연결
               </a>
               <label className="field">
-                <span>calendarId</span>
+                <span>캘린더</span>
                 <input value={googleCalendarId} onChange={(event) => setGoogleCalendarId(event.target.value)} />
               </label>
               <label className="field">
-                <span>timeMin</span>
+                <span>시작 날짜</span>
                 <input value={googleTimeMin} onChange={(event) => setGoogleTimeMin(event.target.value)} />
               </label>
               <label className="field">
-                <span>timeMax</span>
+                <span>종료 날짜</span>
                 <input value={googleTimeMax} onChange={(event) => setGoogleTimeMax(event.target.value)} />
               </label>
               <button className="button button--ghost" onClick={() => void handleGoogleFetch()} disabled={googleLoading}>
-                Google 이벤트 가져오기
+                일정 불러오기
               </button>
               <div className="stack">
                 {googleEvents.slice(0, 5).map((event, index) => (
@@ -523,8 +503,7 @@ function App() {
           <section className="card">
             <div className="card__header">
               <div>
-                <h2>AI</h2>
-                <p>/ai/summarize, /ai/predict, /ai/free-days</p>
+                <h2>AI 분석</h2>
               </div>
             </div>
 
@@ -533,25 +512,25 @@ function App() {
             <div className="stack">
               <div className="toolbar">
                 <button className="button button--ghost" onClick={() => void handleSummarize()} disabled={aiLoading}>
-                  요약
+                  일정 요약
                 </button>
                 <button className="button button--ghost" onClick={() => void handlePredict()} disabled={aiLoading}>
-                  예측
+                  바쁜 날 예측
                 </button>
               </div>
               <label className="field">
-                <span>Predict months</span>
+                <span>예측 기간 (개월)</span>
                 <input type="number" min="1" max="12" value={predictMonths} onChange={(event) => setPredictMonths(Number(event.target.value))} />
               </label>
               <button className="button button--primary" onClick={() => void handleFreeDays()} disabled={aiLoading}>
                 빈 날짜 찾기
               </button>
               <label className="field">
-                <span>Free start</span>
+                <span>시작 날짜</span>
                 <input value={freeStart} onChange={(event) => setFreeStart(event.target.value)} />
               </label>
               <label className="field">
-                <span>Free end</span>
+                <span>종료 날짜</span>
                 <input value={freeEnd} onChange={(event) => setFreeEnd(event.target.value)} />
               </label>
               {summaryText && (
@@ -583,11 +562,11 @@ function App() {
             <div className="card__header">
               <div>
                 <h2 id="login-title">로그인</h2>
-                <p>쿠키를 사용해 자동 로그인을 유지할 수 있습니다.</p>
               </div>
             </div>
 
             {authError && <div className="alert alert--error">{authError}</div>}
+            {authMessage && <div className="alert alert--success">{authMessage}</div>}
 
             <div className="stack">
               <label className="field">
@@ -625,24 +604,23 @@ function App() {
             <div className="card__header">
               <div>
                 <h2>일정 추가</h2>
-                <p>백엔드 /schedules/에 저장</p>
               </div>
             </div>
             <div className="stack">
               <label className="field">
-                <span>Start</span>
+                <span>시작</span>
                 <input type="datetime-local" value={startLocal} onChange={(event) => setStartLocal(event.target.value)} />
               </label>
               <label className="field">
-                <span>End</span>
+                <span>종료</span>
                 <input type="datetime-local" value={endLocal} onChange={(event) => setEndLocal(event.target.value)} />
               </label>
               <label className="field">
-                <span>Title</span>
+                <span>제목</span>
                 <input value={title} onChange={(event) => setTitle(event.target.value)} />
               </label>
               <label className="field">
-                <span>Category</span>
+                <span>분류</span>
                 <select value={category} onChange={(event) => setCategory(event.target.value as ScheduleCategory)}>
                   <option value="appointment">약속</option>
                   <option value="competition">대회</option>
@@ -650,7 +628,7 @@ function App() {
                 </select>
               </label>
               <label className="field">
-                <span>Description</span>
+                <span>메모</span>
                 <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
               </label>
               <div className="toolbar toolbar--end">

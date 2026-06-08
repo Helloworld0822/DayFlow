@@ -20,6 +20,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0f13;
+    --surface: #1c1c22;
+    --surface-soft: #26262e;
+    --border: #383840;
+    --text: #e8e8ed;
+    --muted: #9e9ea8;
+    --accent: #8b7ec8;
+    --success: #34d399;
+    --danger: #f87171;
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+
 * {
   box-sizing: border-box;
 }

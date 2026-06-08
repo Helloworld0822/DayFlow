@@ -25,6 +25,7 @@ GOOGLE_OAUTH_CLIENT_SECRETS_FILE = os.getenv(
     ),
 )
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/google/callback")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 def _load_oauth_flow() -> Flow:
@@ -52,6 +53,9 @@ def google_login(request: Request):
 @router.get("/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     code = request.query_params.get("code")
+    error = request.query_params.get("error")
+    if error:
+        return RedirectResponse(f"{FRONTEND_URL}/?google_error={error}")
     if not code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing code in callback")
     flow = _load_oauth_flow()
@@ -59,14 +63,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     creds = flow.credentials
     request.session["google_oauth_credentials"] = creds.to_json()
 
-    # Use Calendar API to list calendars
-    service = build("calendar", "v3", credentials=creds)
-    calendars = service.calendarList().list().execute()
-
-    # return a simple JSON of calendars
-    items = calendars.get("items", [])
-    simplified = [{"id": c.get("id"), "summary": c.get("summary")} for c in items]
-    return {"calendars": simplified}
+    return RedirectResponse(f"{FRONTEND_URL}/?google=connected")
 
 
 @router.get("/google/events")
