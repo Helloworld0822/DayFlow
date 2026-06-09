@@ -25,7 +25,7 @@ GOOGLE_OAUTH_CLIENT_SECRETS_FILE = os.getenv(
     ),
 )
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/google/callback")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost/")
 
 
 def _load_oauth_flow() -> Flow:

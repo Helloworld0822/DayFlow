@@ -666,6 +666,7 @@ function App() {
               </label>
               <label className="field field--inline">
                 <input
+                  className='check_box'
                   type="checkbox"
                   checked={authRememberMe}
                   onChange={(event) => setAuthRememberMe(event.target.checked)}
