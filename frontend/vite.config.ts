@@ -15,6 +15,7 @@ export default defineConfig({
       '/schedules': 'http://backend:8000',
       '/google': 'http://backend:8000',
       '/ai': 'http://backend:8000',
+      '/microsoft': 'http://backend:8000',
       '/login': 'http://backend:8000',
       '/register': 'http://backend:8000',
       '/protected': 'http://backend:8000',

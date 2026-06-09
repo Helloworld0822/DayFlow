@@ -4,6 +4,7 @@ import './App.css'
 import {
   createSchedule,
   fetchGoogleEvents,
+  fetchMicrosoftEvents,
   findFreeDays,
   getErrorMessage,
   loadProtectedProfile,
@@ -14,6 +15,7 @@ import {
   logoutUser,
   summarizeSchedules,
   type GoogleEvent,
+  type MicrosoftEvent,
   type Schedule,
   type ScheduleCategory,
   type UserProfile,
@@ -111,6 +113,13 @@ function App() {
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [googleError, setGoogleError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
+
+  const [msCalendarId, setMsCalendarId] = useState('')
+  const [msTimeMin, setMsTimeMin] = useState(formatLocalDateTimeInput(formatDateISO(today), '00:00'))
+  const [msTimeMax, setMsTimeMax] = useState(formatLocalDateTimeInput(formatDateISO(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)), '23:59'))
+  const [msEvents, setMsEvents] = useState<MicrosoftEvent[]>([])
+  const [msError, setMsError] = useState('')
+  const [msLoading, setMsLoading] = useState(false)
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
   const isAuthenticated = Boolean(authProfile)
@@ -297,6 +306,23 @@ function App() {
       setGoogleError(getErrorMessage(error))
     } finally {
       setGoogleLoading(false)
+    }
+  }
+
+  async function handleMicrosoftFetch() {
+    try {
+      setMsLoading(true)
+      setMsError('')
+      const result = await fetchMicrosoftEvents(
+        msCalendarId || 'calendar',
+        msTimeMin,
+        msTimeMax,
+      )
+      setMsEvents(result.events)
+    } catch (error) {
+      setMsError(getErrorMessage(error))
+    } finally {
+      setMsLoading(false)
     }
   }
 
@@ -492,6 +518,45 @@ function App() {
               <div className="stack">
                 {googleEvents.slice(0, 5).map((event, index) => (
                   <div key={`${event.summary ?? 'event'}-${index}`} className="detail-row detail-row--compact">
+                    <strong>{event.summary ?? '(no title)'}</strong>
+                    <span>{event.start ?? '-'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card__header">
+              <div>
+                <h2>Microsoft 365</h2>
+              </div>
+            </div>
+
+            {msError && <div className="alert alert--error">{msError}</div>}
+
+            <div className="stack">
+              <p className="field__hint">
+                .env에 MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_USER_EMAIL을 설정하세요.
+              </p>
+              <label className="field">
+                <span>캘린더 ID</span>
+                <input value={msCalendarId} onChange={(event) => setMsCalendarId(event.target.value)} placeholder="calendar" />
+              </label>
+              <label className="field">
+                <span>시작 날짜</span>
+                <input value={msTimeMin} onChange={(event) => setMsTimeMin(event.target.value)} />
+              </label>
+              <label className="field">
+                <span>종료 날짜</span>
+                <input value={msTimeMax} onChange={(event) => setMsTimeMax(event.target.value)} />
+              </label>
+              <button className="button button--ghost" onClick={() => void handleMicrosoftFetch()} disabled={msLoading}>
+                일정 불러오기
+              </button>
+              <div className="stack">
+                {msEvents.slice(0, 5).map((event, index) => (
+                  <div key={`${event.summary ?? 'ms'}-${index}`} className="detail-row detail-row--compact">
                     <strong>{event.summary ?? '(no title)'}</strong>
                     <span>{event.start ?? '-'}</span>
                   </div>

@@ -46,6 +46,10 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'de
 from backend.google_auth import router as google_router
 app.include_router(google_router)
 
+# include microsoft routes
+from backend.microsoft import router as microsoft_router
+app.include_router(microsoft_router)
+
 # include ai routes
 from backend.ai_routes import router as ai_router
 app.include_router(ai_router, prefix="/ai")

@@ -36,6 +36,15 @@ export type GoogleFetchResponse = {
   events: GoogleEvent[]
 }
 
+export type MicrosoftEvent = {
+  start?: string
+  summary?: string
+}
+
+export type MSFetchResponse = {
+  events: MicrosoftEvent[]
+}
+
 export class ApiError extends Error {
   status: number
   detail: unknown
@@ -175,4 +184,9 @@ export function findFreeDays(events: Schedule[], start: string, end: string) {
 export function fetchGoogleEvents(calendarId: string, timeMin: string, timeMax: string) {
   const params = new URLSearchParams({ calendarId, timeMin, timeMax })
   return apiRequest<GoogleFetchResponse>(`/ai/google/fetch?${params.toString()}`)
+}
+
+export function fetchMicrosoftEvents(calendarId: string, timeMin: string, timeMax: string) {
+  const params = new URLSearchParams({ calendarId, timeMin, timeMax })
+  return apiRequest<MSFetchResponse>(`/microsoft/events?${params.toString()}`)
 }
