@@ -21,6 +21,13 @@ import {
   type UserProfile,
 } from './lib/api'
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+const CATEGORY_LABEL: Record<ScheduleCategory, string> = {
+  appointment: '약속',
+  competition: '대회',
+  schedule: '스케줄',
+}
+
 function pad(value: number) {
   return String(value).padStart(2, '0')
 }
@@ -60,6 +67,29 @@ function buildMonthGrid(year: number, month: number) {
   return weeks
 }
 
+function buildDateEventMap(schedules: Schedule[]) {
+  const map = new Map<string, Schedule[]>()
+  for (const event of schedules) {
+    const start = new Date(event.start)
+    const end = new Date(event.end)
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+    const msPerDay = 86400000
+    const days = Math.round((endDay.getTime() - startDay.getTime()) / msPerDay) + 1
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDay.getTime() + i * msPerDay)
+      const key = formatDateISO(d)
+      const arr = map.get(key)
+      if (arr) {
+        arr.push(event)
+      } else {
+        map.set(key, [event])
+      }
+    }
+  }
+  return map
+}
+
 function formatTimeLocal(value?: string) {
   if (!value) return ''
   const parsed = new Date(value)
@@ -67,18 +97,12 @@ function formatTimeLocal(value?: string) {
   return `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`
 }
 
-function scheduleLabel(category: ScheduleCategory) {
-  if (category === 'appointment') return '약속'
-  if (category === 'competition') return '대회'
-  return '스케줄'
-}
-
 function App() {
-  const today = new Date()
+  const [today] = useState(() => formatDateISO(new Date()))
 
-  const [viewYear, setViewYear] = useState(today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(today.getMonth())
-  const [selectedDate, setSelectedDate] = useState(formatDateISO(today))
+  const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
+  const [selectedDate, setSelectedDate] = useState(today)
 
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [scheduleError, setScheduleError] = useState('')
@@ -86,8 +110,8 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [startLocal, setStartLocal] = useState(formatLocalDateTimeInput(formatDateISO(today), '09:00'))
-  const [endLocal, setEndLocal] = useState(formatLocalDateTimeInput(formatDateISO(today), '10:00'))
+  const [startLocal, setStartLocal] = useState(formatLocalDateTimeInput(today, '09:00'))
+  const [endLocal, setEndLocal] = useState(formatLocalDateTimeInput(today, '10:00'))
   const [category, setCategory] = useState<ScheduleCategory>('appointment')
 
   const [authEmail, setAuthEmail] = useState('')
@@ -101,46 +125,30 @@ function App() {
   const [summaryText, setSummaryText] = useState('')
   const [predictMonths, setPredictMonths] = useState(3)
   const [predictDates, setPredictDates] = useState<string[]>([])
-  const [freeStart, setFreeStart] = useState(formatDateISO(today))
-  const [freeEnd, setFreeEnd] = useState(formatDateISO(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 14)))
+  const [freeStart, setFreeStart] = useState(today)
+  const [freeEnd, setFreeEnd] = useState(formatDateISO(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 14)))
   const [freeDays, setFreeDays] = useState<string[]>([])
   const [aiError, setAiError] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
 
   const [googleCalendarId, setGoogleCalendarId] = useState('primary')
-  const [googleTimeMin, setGoogleTimeMin] = useState(formatLocalDateTimeInput(formatDateISO(today), '00:00'))
-  const [googleTimeMax, setGoogleTimeMax] = useState(formatLocalDateTimeInput(formatDateISO(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)), '23:59'))
+  const [googleTimeMin, setGoogleTimeMin] = useState(formatLocalDateTimeInput(today, '00:00'))
+  const [googleTimeMax, setGoogleTimeMax] = useState(formatLocalDateTimeInput(formatDateISO(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 30)), '23:59'))
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [googleError, setGoogleError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
 
   const [msCalendarId, setMsCalendarId] = useState('')
-  const [msTimeMin, setMsTimeMin] = useState(formatLocalDateTimeInput(formatDateISO(today), '00:00'))
-  const [msTimeMax, setMsTimeMax] = useState(formatLocalDateTimeInput(formatDateISO(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)), '23:59'))
+  const [msTimeMin, setMsTimeMin] = useState(formatLocalDateTimeInput(today, '00:00'))
+  const [msTimeMax, setMsTimeMax] = useState(formatLocalDateTimeInput(formatDateISO(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 30)), '23:59'))
   const [msEvents, setMsEvents] = useState<MicrosoftEvent[]>([])
   const [msError, setMsError] = useState('')
   const [msLoading, setMsLoading] = useState(false)
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
+  const dateEventMap = useMemo(() => buildDateEventMap(schedules), [schedules])
+  const selectedMonthLabel = useMemo(() => formatMonthLabel(viewYear, viewMonth), [viewYear, viewMonth])
   const isAuthenticated = Boolean(authProfile)
-
-  function prevMonth() {
-    if (viewMonth === 0) {
-      setViewMonth(11)
-      setViewYear((year) => year - 1)
-    } else {
-      setViewMonth((month) => month - 1)
-    }
-  }
-
-  function nextMonth() {
-    if (viewMonth === 11) {
-      setViewMonth(0)
-      setViewYear((year) => year + 1)
-    } else {
-      setViewMonth((month) => month + 1)
-    }
-  }
 
   const refreshSchedules = useCallback(async () => {
     try {
@@ -174,15 +182,36 @@ function App() {
     void refreshProtectedProfile()
   }, [refreshSchedules, refreshProtectedProfile])
 
-  function openAddModal(dateIso = selectedDate) {
-    setSelectedDate(dateIso)
+  const prevMonth = useCallback(() => {
+    setViewMonth((month) => {
+      if (month === 0) {
+        setViewYear((year) => year - 1)
+        return 11
+      }
+      return month - 1
+    })
+  }, [])
+
+  const nextMonth = useCallback(() => {
+    setViewMonth((month) => {
+      if (month === 11) {
+        setViewYear((year) => year + 1)
+        return 0
+      }
+      return month + 1
+    })
+  }, [])
+
+  const openAddModal = useCallback((dateIso?: string) => {
+    const target = dateIso || today
+    setSelectedDate(target)
     setTitle('')
     setDescription('')
-    setStartLocal(formatLocalDateTimeInput(dateIso, '09:00'))
-    setEndLocal(formatLocalDateTimeInput(dateIso, '10:00'))
+    setStartLocal(formatLocalDateTimeInput(target, '09:00'))
+    setEndLocal(formatLocalDateTimeInput(target, '10:00'))
     setCategory('appointment')
     setModalOpen(true)
-  }
+  }, [today])
 
   async function handleCreateSchedule() {
     if (!startLocal || !endLocal) return
@@ -250,10 +279,13 @@ function App() {
 
   async function handleLogout() {
     try {
+      setAuthError('')
+      setAuthMessage('')
       await logoutUser()
-    } finally {
       setAuthProfile(null)
       setAuthMessage('로그아웃했습니다.')
+    } catch (error) {
+      setAuthError(getErrorMessage(error))
     }
   }
 
@@ -326,19 +358,15 @@ function App() {
     }
   }
 
-  const selectedEvents = useMemo(
-    () =>
-      schedules.filter((event) => {
-        const dayStart = new Date(`${selectedDate}T00:00:00`)
-        const dayEnd = new Date(`${selectedDate}T23:59:59.999`)
-        const start = new Date(event.start)
-        const end = new Date(event.end)
-        return start <= dayEnd && end >= dayStart
-      }),
-    [schedules, selectedDate],
-  )
-
-  const selectedMonthLabel = formatMonthLabel(viewYear, viewMonth)
+  const selectedEvents = useMemo(() => {
+    const dayStart = new Date(`${selectedDate}T00:00:00`)
+    const dayEnd = new Date(`${selectedDate}T23:59:59.999`)
+    return schedules.filter((event) => {
+      const start = new Date(event.start)
+      const end = new Date(event.end)
+      return start <= dayEnd && end >= dayStart
+    })
+  }, [schedules, selectedDate])
 
   return (
     <div className="app-shell">
@@ -381,20 +409,14 @@ function App() {
 
           <div className="calendar">
             <div className="calendar__weekdays">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              {WEEKDAYS.map((day) => (
                 <span key={day}>{day}</span>
               ))}
             </div>
             <div className="calendar__grid">
               {monthGrid.map((week, weekIndex) =>
                 week.map((cell, cellIndex) => {
-                  const dayEvents = cell.iso ? schedules.filter((event) => {
-                    const start = new Date(event.start)
-                    const end = new Date(event.end)
-                    const dayStart = new Date(`${cell.iso}T00:00:00`)
-                    const dayEnd = new Date(`${cell.iso}T23:59:59.999`)
-                    return start <= dayEnd && end >= dayStart
-                  }) : []
+                  const dayEvents = cell.iso ? dateEventMap.get(cell.iso) ?? [] : []
                   const selected = cell.iso === selectedDate
 
                   return (
@@ -436,7 +458,7 @@ function App() {
                 {selectedEvents.map((event) => (
                   <div key={event.id} className="detail-row">
                     <strong>{event.title}</strong>
-                    <span>{formatTimeLocal(event.start)} - {formatTimeLocal(event.end)} · {scheduleLabel(event.category)}</span>
+                    <span>{formatTimeLocal(event.start)} - {formatTimeLocal(event.end)} · {CATEGORY_LABEL[event.category]}</span>
                     {event.description && <p>{event.description}</p>}
                   </div>
                 ))}
@@ -449,7 +471,7 @@ function App() {
                 {schedules.slice(0, 6).map((event) => (
                   <div key={event.id} className="detail-row detail-row--compact">
                     <strong>{event.title}</strong>
-                    <span>{formatTimeLocal(event.start)} · {scheduleLabel(event.category)}</span>
+                    <span>{formatTimeLocal(event.start)} · {CATEGORY_LABEL[event.category]}</span>
                   </div>
                 ))}
                 {!schedules.length && <p>등록된 일정이 없습니다.</p>}
