@@ -1,41 +1,59 @@
 :root {
-  --bg: #f7f7fb;
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --surface-soft: #f4f6fb;
-  --border: #e5e7eb;
-  --text: #111827;
-  --muted: #6b7280;
-  --accent: #6750a4;
-  --success: #15803d;
-  --danger: #b91c1c;
-  --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --surface-soft: #f0f1f3;
+  --border: #dfe2e6;
+  --text: #1b2027;
+  --muted: #6c7580;
+  --accent: #4a6fa5;
+  --accent-hover: #3d5f8f;
+  --accent-light: #e8eef6;
+  --success: #2d6a4f;
+  --success-light: #e6f4ec;
+  --danger: #b44333;
+  --danger-light: #fde8e5;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --radius: 10px;
+  --radius-lg: 14px;
+  --transition: 150ms ease;
 
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
   color: var(--text);
   background: var(--bg);
-  line-height: 1.5;
+  line-height: 1.55;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f0f13;
-    --surface: #1c1c22;
-    --surface-soft: #26262e;
-    --border: #383840;
-    --text: #e8e8ed;
-    --muted: #9e9ea8;
-    --accent: #8b7ec8;
-    --success: #34d399;
+    --bg: #111318;
+    --surface: #1a1d24;
+    --surface-soft: #22262e;
+    --border: #2e323a;
+    --text: #e2e4e8;
+    --muted: #8c9198;
+    --accent: #6b93d3;
+    --accent-hover: #80a4dc;
+    --accent-light: #1e2a3a;
+    --success: #4ade80;
+    --success-light: #162e1e;
     --danger: #f87171;
-    --shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    --danger-light: #2e1a1a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -48,6 +66,7 @@ body,
 
 body {
   background: var(--bg);
+  color: var(--text);
 }
 
 a {
@@ -59,4 +78,8 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
