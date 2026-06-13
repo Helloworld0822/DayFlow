@@ -49,10 +49,11 @@ def summarize_events(events: List[Dict[str, Any]]) -> str:
         prompt_events.append(f"- {start}: {summary}")
 
     prompt = (
-        "You are a calendar assistant. Given the following events, produce a concise timeline summary "
+        "You are a calendar assistant. Respond only in Korean (한국어로만 답하세요). "
+        "Given the following events, produce a concise timeline summary "
         "and identify any patterns or clusters in dates.\n\n"
         + "\n".join(prompt_events)
-        + "\n\nProvide: 1) short timeline summary (3 sentences max). "
+        + "\n\nProvide in Korean: 1) short timeline summary (3 sentences max). "
         "2) any repeating patterns (weekly, monthly). "
         "3) likely future dates when similar events may appear (list dates)."
     )
@@ -70,10 +71,11 @@ def predict_busy_days(events: List[Dict[str, Any]], months_ahead: int = 3) -> Li
     """Predict likely busy dates given past events. Returns ISO dates as strings."""
     summary = summarize_events(events)
     prompt = (
+        "You are a calendar assistant. Respond only in Korean (한국어로만 답하세요). "
         "Given the calendar summary below and the list of past events, predict specific dates "
         f"over the next {months_ahead} months that are most likely to have new events. "
         "Provide output as a JSON array of ISO-8601 dates.\n\n"
-        "Summary:\n" + summary + "\n\nEvents:\n"
+        "Summary (Korean):\n" + summary + "\n\nEvents:\n"
     )
     for e in events:
         start = e.get("start")
