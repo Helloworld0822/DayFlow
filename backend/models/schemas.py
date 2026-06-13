@@ -17,12 +17,12 @@ class ScheduleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    start: str
-    end: str
+    start: datetime
+    end: datetime
     title: str
     description: Optional[str]
     category: str
-    created_at: Optional[str]
+    created_at: Optional[datetime]
 
 
 # ── Auth ────────────────────────────────────────────────────────────────

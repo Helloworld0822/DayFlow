@@ -123,6 +123,26 @@ export function createSchedule(payload: {
   })
 }
 
+export function updateSchedule(id: string, payload: {
+  start: string
+  end: string
+  title: string
+  description?: string
+  category: ScheduleCategory
+}) {
+  return apiRequest<Schedule>(`/schedules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteSchedule(id: string) {
+  return apiRequest<void>(`/schedules/${id}`, {
+    method: 'DELETE',
+  })
+}
+
 export function registerUser(email: string, password: string) {
   return apiRequest<UserProfile>('/register', {
     method: 'POST',
