@@ -1,8 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
 import heroImg from './assets/hero.png'
+import logoDayflow from './assets/logo-dayflow.svg'
 import './App.css'
 import {
+  Bell,
+  Sun,
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  X,
+  Link,
+  LogOut,
+  Key,
+  Sparkles,
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  Loader2,
+} from 'lucide-react'
+import {
   createSchedule,
+  deleteSchedule,
+  updateSchedule,
   fetchGoogleEvents,
   fetchMicrosoftEvents,
   findFreeDays,
@@ -99,6 +122,18 @@ function formatTimeLocal(value?: string) {
 
 function App() {
   const [today] = useState(() => formatDateISO(new Date()))
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
 
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
@@ -106,8 +141,9 @@ function App() {
 
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [scheduleError, setScheduleError] = useState('')
-  const [scheduleLoading, setScheduleLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [startLocal, setStartLocal] = useState(formatLocalDateTimeInput(today, '09:00'))
@@ -121,6 +157,7 @@ function App() {
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
 
   const [summaryText, setSummaryText] = useState('')
   const [predictMonths, setPredictMonths] = useState(3)
@@ -145,6 +182,10 @@ function App() {
   const [msError, setMsError] = useState('')
   const [msLoading, setMsLoading] = useState(false)
 
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [integrationModalOpen, setIntegrationModalOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
   const dateEventMap = useMemo(() => buildDateEventMap(schedules), [schedules])
   const selectedMonthLabel = useMemo(() => formatMonthLabel(viewYear, viewMonth), [viewYear, viewMonth])
@@ -152,14 +193,11 @@ function App() {
 
   const refreshSchedules = useCallback(async () => {
     try {
-      setScheduleLoading(true)
       const data = await loadSchedules()
       setSchedules(data)
       setScheduleError('')
     } catch (error) {
       setScheduleError(getErrorMessage(error))
-    } finally {
-      setScheduleLoading(false)
     }
   }, [])
 
@@ -182,6 +220,16 @@ function App() {
     void refreshProtectedProfile()
   }, [refreshSchedules, refreshProtectedProfile])
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const prevMonth = useCallback(() => {
     setViewMonth((month) => {
       if (month === 0) {
@@ -200,6 +248,13 @@ function App() {
       }
       return month + 1
     })
+  }, [])
+
+  const goToToday = useCallback(() => {
+    const now = new Date()
+    setViewYear(now.getFullYear())
+    setViewMonth(now.getMonth())
+    setSelectedDate(formatDateISO(now))
   }, [])
 
   const openAddModal = useCallback((dateIso?: string) => {
@@ -221,7 +276,6 @@ function App() {
     }
 
     try {
-      setScheduleLoading(true)
       await createSchedule({
         start: startLocal,
         end: endLocal,
@@ -233,8 +287,48 @@ function App() {
       await refreshSchedules()
     } catch (error) {
       setScheduleError(getErrorMessage(error))
-    } finally {
-      setScheduleLoading(false)
+    }
+  }
+
+  async function handleDeleteSchedule(id: string) {
+    try {
+      await deleteSchedule(id)
+      await refreshSchedules()
+    } catch (error) {
+      setScheduleError(getErrorMessage(error))
+    }
+  }
+
+  function openEditModal(schedule: Schedule) {
+    setEditingSchedule(schedule)
+    setTitle(schedule.title)
+    setDescription(schedule.description || '')
+    setStartLocal(schedule.start.slice(0, 16))
+    setEndLocal(schedule.end.slice(0, 16))
+    setCategory(schedule.category)
+    setEditModalOpen(true)
+  }
+
+  async function handleUpdateSchedule() {
+    if (!editingSchedule || !startLocal || !endLocal) return
+    if (new Date(endLocal) <= new Date(startLocal)) {
+      setScheduleError('종료 시간은 시작 시간보다 이후여야 합니다.')
+      return
+    }
+
+    try {
+      await updateSchedule(editingSchedule.id, {
+        start: startLocal,
+        end: endLocal,
+        title: title || 'Untitled',
+        description: description || undefined,
+        category,
+      })
+      setEditModalOpen(false)
+      setEditingSchedule(null)
+      await refreshSchedules()
+    } catch (error) {
+      setScheduleError(getErrorMessage(error))
     }
   }
 
@@ -250,6 +344,7 @@ function App() {
       setAuthMessage('')
       await registerUser(authEmail, authPassword)
       setAuthMessage('회원가입이 완료되었습니다. 로그인하세요.')
+      setAuthMode('login')
     } catch (error) {
       setAuthError(getErrorMessage(error))
     } finally {
@@ -284,6 +379,7 @@ function App() {
       await logoutUser()
       setAuthProfile(null)
       setAuthMessage('로그아웃했습니다.')
+      setProfileMenuOpen(false)
     } catch (error) {
       setAuthError(getErrorMessage(error))
     }
@@ -293,6 +389,8 @@ function App() {
     try {
       setAiLoading(true)
       setAiError('')
+      setPredictDates([])
+      setFreeDays([])
       const result = await summarizeSchedules(schedules)
       setSummaryText(result.summary)
     } catch (error) {
@@ -306,6 +404,8 @@ function App() {
     try {
       setAiLoading(true)
       setAiError('')
+      setSummaryText('')
+      setFreeDays([])
       const result = await predictBusyDays(schedules, predictMonths)
       setPredictDates(result.dates)
     } catch (error) {
@@ -319,6 +419,8 @@ function App() {
     try {
       setAiLoading(true)
       setAiError('')
+      setSummaryText('')
+      setPredictDates([])
       const result = await findFreeDays(schedules, freeStart, freeEnd)
       setFreeDays(result.free_days)
     } catch (error) {
@@ -346,7 +448,7 @@ function App() {
       setMsLoading(true)
       setMsError('')
       const result = await fetchMicrosoftEvents(
-        msCalendarId || 'calendar',
+        msCalendarId || '',
         msTimeMin,
         msTimeMax,
       )
@@ -368,369 +470,810 @@ function App() {
     })
   }, [schedules, selectedDate])
 
+  const todayEvents = useMemo(() => {
+    return selectedEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+  }, [selectedEvents])
+
+  const upcomingEvents = useMemo(() => {
+    const now = new Date()
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    return schedules
+      .filter((event) => {
+        const start = new Date(event.start)
+        return start > now && start <= nextWeek
+      })
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+      .slice(0, 5)
+  }, [schedules])
+
+  const getInitials = (email: string) => {
+    return email.charAt(0).toUpperCase()
+  }
+
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <img src={heroImg} width={44} height={44} alt="logo" />
-          <div>
-            <h1>Simple Calendar</h1>
+      {/* Header */}
+      <header className="header">
+        <div className="header-brand">
+          <img src={logoDayflow} width={32} height={32} alt="logo" />
+          <h1>DayFlow</h1>
+        </div>
+
+        <div className="header-search">
+          <input type="text" placeholder="일정 검색..." />
+        </div>
+
+        <div className="header-actions">
+          <button className="header-btn" title="알림">
+            <Bell width={20} height={20} />
+          </button>
+
+          <button className="header-btn" onClick={toggleTheme} title={theme === 'dark' ? '화이트 모드' : '다크 모드'}>
+            {theme === 'dark' ? (
+              <Sun width={20} height={20} />
+            ) : (
+              <Moon width={20} height={20} />
+            )}
+          </button>
+
+          <div className="header-profile-wrapper" ref={profileMenuRef}>
+            <button
+              className="header-profile"
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+            >
+              <div className="header-avatar">
+                {isAuthenticated && authProfile ? getInitials(authProfile.email) : '?'}
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {profileMenuOpen && (
+                <motion.div
+                  className="profile-menu"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {isAuthenticated && authProfile && (
+                    <div className="profile-menu-header">
+                      <div className="profile-menu-email">{authProfile.email}</div>
+                    </div>
+                  )}
+
+                  <button
+                    className="profile-menu-item"
+                    onClick={() => {
+                      setIntegrationModalOpen(true)
+                      setProfileMenuOpen(false)
+                    }}
+                  >
+                    <span className="profile-menu-item-icon"><Link size={16} /></span>
+                    <span>연동 관리</span>
+                  </button>
+
+                  <div className="profile-menu-divider" />
+
+                  {isAuthenticated ? (
+                    <button
+                      className="profile-menu-item"
+                      onClick={() => void handleLogout()}
+                    >
+                      <span className="profile-menu-item-icon"><LogOut size={16} /></span>
+                      <span>로그아웃</span>
+                    </button>
+                  ) : (
+                    <button
+                      className="profile-menu-item"
+                      onClick={() => {
+                        setProfileMenuOpen(false)
+                      }}
+                    >
+                      <span className="profile-menu-item-icon"><Key size={16} /></span>
+                      <span>로그인</span>
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </header>
 
-      <main className="layout">
-        <section className="card card--wide">
-          <div className="card__header">
-            <div>
-              <h2>일정</h2>
-            </div>
-            <div className="toolbar">
-              <button className="button button--ghost" onClick={() => void refreshSchedules()}>
-                새로고침
+      {/* Main Layout */}
+      <main className="main-layout">
+        {/* Calendar Section */}
+        <section className="calendar-section">
+          <div className="calendar-header">
+            <div className="calendar-nav">
+              <button className="calendar-nav-btn" onClick={prevMonth}>
+                <ChevronLeft width={16} height={16} />
               </button>
-              <button className="button button--primary" onClick={() => openAddModal()}>
-                일정 추가
+              <span className="calendar-month">{selectedMonthLabel}</span>
+              <button className="calendar-nav-btn" onClick={nextMonth}>
+                <ChevronRight width={16} height={16} />
               </button>
             </div>
-          </div>
-
-          {scheduleError && <div className="alert alert--error">{scheduleError}</div>}
-
-          <div className="calendar-toolbar">
-            <button className="button button--ghost" onClick={prevMonth}>
-              이전
-            </button>
-            <strong>{selectedMonthLabel}</strong>
-            <button className="button button--ghost" onClick={nextMonth}>
-              다음
+            <button className="calendar-today-btn" onClick={goToToday}>
+              오늘
             </button>
           </div>
 
-          <div className="calendar">
-            <div className="calendar__weekdays">
+          <div className="calendar-grid-container">
+            <div className="calendar-weekdays">
               {WEEKDAYS.map((day) => (
-                <span key={day}>{day}</span>
+                <span key={day} className="calendar-weekday">{day}</span>
               ))}
             </div>
-            <div className="calendar__grid">
+            <div className="calendar-days">
               {monthGrid.map((week, weekIndex) =>
                 week.map((cell, cellIndex) => {
                   const dayEvents = cell.iso ? dateEventMap.get(cell.iso) ?? [] : []
                   const selected = cell.iso === selectedDate
+                  const isToday = cell.iso === today
+                  const isOtherMonth = !cell.day
+                  const isBusy = cell.iso && predictDates.includes(cell.iso)
 
                   return (
-                    <button
+                    <motion.button
                       key={`${weekIndex}-${cellIndex}`}
                       type="button"
-                      className={`day ${selected ? 'day--selected' : ''}`}
+                      className={`calendar-day ${selected ? 'calendar-day--selected' : ''} ${isToday ? 'calendar-day--today' : ''} ${isOtherMonth ? 'calendar-day--other-month' : ''} ${!cell.day ? 'calendar-day--empty' : ''} ${isBusy ? 'calendar-day--busy' : ''}`}
                       onClick={() => cell.iso && setSelectedDate(cell.iso)}
+                      whileHover={{ scale: cell.day ? 1.02 : 1 }}
+                      whileTap={{ scale: cell.day ? 0.98 : 1 }}
                     >
-                      <div className="day__top">
-                        <span>{cell.day ?? ''}</span>
-                        {cell.iso && (
-                          <span className="day__add" onClick={(event) => { event.stopPropagation(); openAddModal(cell.iso); }}>
-                            + add
-                          </span>
-                        )}
-                      </div>
-                      <div className="day__events">
+                      <div className="calendar-day-number">{cell.day ? `${cell.day}일` : ''}</div>
+                      <div className="calendar-day-events">
                         {dayEvents.slice(0, 2).map((event) => (
-                          <div key={event.id} className="event-chip">
-                            <strong>{formatTimeLocal(event.start)}</strong>
-                            <span>{event.title}</span>
+                          <div
+                            key={event.id}
+                            className={`calendar-event-chip calendar-event-chip--${event.category}`}
+                            title={event.title}
+                          >
+                            <span className={`calendar-event-dot calendar-event-dot--${event.category}`} />
+                            <span className="calendar-event-chip-text">{event.title}</span>
                           </div>
                         ))}
-                        {dayEvents.length > 2 && <div className="day__more">+{dayEvents.length - 2} more</div>}
+                        {dayEvents.length > 2 && (
+                          <span className="calendar-event-more">+{dayEvents.length - 2}개</span>
+                        )}
                       </div>
-                    </button>
+                    </motion.button>
                   )
                 }),
               )}
             </div>
           </div>
-
-          <div className="details-grid">
-            <div className="panel">
-              <h3>{selectedDate}</h3>
-              <p>{selectedEvents.length ? `${selectedEvents.length}개 일정` : '일정 없음'}</p>
-              <div className="stack">
-                {selectedEvents.map((event) => (
-                  <div key={event.id} className="detail-row">
-                    <strong>{event.title}</strong>
-                    <span>{formatTimeLocal(event.start)} - {formatTimeLocal(event.end)} · {CATEGORY_LABEL[event.category]}</span>
-                    {event.description && <p>{event.description}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="panel">
-              <h3>{scheduleLoading ? '불러오는 중...' : '내 일정'}</h3>
-              <div className="stack">
-                {schedules.slice(0, 6).map((event) => (
-                  <div key={event.id} className="detail-row detail-row--compact">
-                    <strong>{event.title}</strong>
-                    <span>{formatTimeLocal(event.start)} · {CATEGORY_LABEL[event.category]}</span>
-                  </div>
-                ))}
-                {!schedules.length && <p>등록된 일정이 없습니다.</p>}
-              </div>
-            </div>
-          </div>
         </section>
 
-        <aside className="sidebar">
-          <section className="card">
-            <div className="card__header">
-              <div>
-                <h2>계정</h2>
-              </div>
+        {/* Schedule Panel */}
+        <aside className="schedule-panel">
+          {/* Today's Schedule */}
+          <div className="schedule-section">
+            <div className="schedule-section-header">
+              <span className="schedule-section-title">오늘 일정</span>
+              <span className="schedule-section-count">{todayEvents.length}개</span>
             </div>
+            {scheduleError && <div className="alert alert-error">{scheduleError}</div>}
+            <div className="schedule-list">
+              {todayEvents.length > 0 ? (
+                todayEvents.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    className="schedule-item"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span className="schedule-item-time">{formatTimeLocal(event.start)}</span>
+                    <div className="schedule-item-content">
+                      <div className="schedule-item-title">{event.title}</div>
+                      <div className="schedule-item-category">{CATEGORY_LABEL[event.category]}</div>
+                    </div>
+                    <div className="schedule-item-actions">
+                      <button
+                        className="schedule-edit-btn"
+                        onClick={() => openEditModal(event)}
+                        title="수정"
+                      >
+                        <Pencil width={14} height={14} />
+                      </button>
+                      <button
+                        className="schedule-delete-btn"
+                        onClick={() => void handleDeleteSchedule(event.id)}
+                        title="삭제"
+                      >
+                        <Trash2 width={14} height={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="schedule-empty">일정이 없습니다</div>
+              )}
+            </div>
+          </div>
 
-            {authError && <div className="alert alert--error">{authError}</div>}
-            {authMessage && <div className="alert alert--success">{authMessage}</div>}
+          {/* Upcoming Schedule */}
+          <div className="schedule-section">
+            <div className="schedule-section-header">
+              <span className="schedule-section-title">다가오는 일정</span>
+              <span className="schedule-section-count">{upcomingEvents.length}개</span>
+            </div>
+            <div className="schedule-list">
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    className="schedule-item"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span className="schedule-item-time">{formatTimeLocal(event.start)}</span>
+                    <div className="schedule-item-content">
+                      <div className="schedule-item-title">{event.title}</div>
+                      <div className="schedule-item-category">{CATEGORY_LABEL[event.category]}</div>
+                    </div>
+                    <div className="schedule-item-actions">
+                      <button
+                        className="schedule-edit-btn"
+                        onClick={() => openEditModal(event)}
+                        title="수정"
+                      >
+                        <Pencil width={14} height={14} />
+                      </button>
+                      <button
+                        className="schedule-delete-btn"
+                        onClick={() => void handleDeleteSchedule(event.id)}
+                        title="삭제"
+                      >
+                        <Trash2 width={14} height={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="schedule-empty">다가오는 일정이 없습니다</div>
+              )}
+            </div>
+          </div>
 
-            {isAuthenticated ? (
-              <div className="stack">
-                <div className="detail-row">
-                  <strong>{authProfile?.email}</strong>
-                </div>
-                <div className="toolbar">
-                  <button className="button button--danger" onClick={() => void handleLogout()}>
-                    로그아웃
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="stack">
-                <p>로그인이 필요합니다.</p>
+          {/* AI Section */}
+          <div className="ai-section">
+            <div className="ai-section-header">
+              <div className="ai-icon"><Sparkles size={14} /></div>
+              <span className="ai-section-title">AI 분석</span>
+            </div>
+            
+            {aiError && <div className="alert alert-error">{aiError}</div>}
+
+            {aiLoading && (
+              <div className="ai-loading">
+                <Loader2 size={16} className="ai-loading-spinner" />
+                <span>분석 중...</span>
               </div>
             )}
-          </section>
 
-          <section className="card">
-            <div className="card__header">
-              <div>
-                <h2>Google 캘린더</h2>
-              </div>
-            </div>
-
-            {googleError && <div className="alert alert--error">{googleError}</div>}
-
-            <div className="stack">
-              <a className="button button--primary button--link" href="/google/login">
-                Google 계정 연결
-              </a>
-              <label className="field">
-                <span>캘린더</span>
-                <input value={googleCalendarId} onChange={(event) => setGoogleCalendarId(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>시작 날짜</span>
-                <input value={googleTimeMin} onChange={(event) => setGoogleTimeMin(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>종료 날짜</span>
-                <input value={googleTimeMax} onChange={(event) => setGoogleTimeMax(event.target.value)} />
-              </label>
-              <button className="button button--ghost" onClick={() => void handleGoogleFetch()} disabled={googleLoading}>
-                일정 불러오기
+            <div className="ai-suggestions">
+              <button
+                className="ai-suggestion"
+                onClick={() => void handleSummarize()}
+                disabled={aiLoading}
+              >
+                <span className="ai-suggestion-icon"><BarChart3 size={14} /></span>
+                <span>일정 요약</span>
               </button>
-              <div className="stack">
-                {googleEvents.slice(0, 5).map((event, index) => (
-                  <div key={`${event.summary ?? 'event'}-${index}`} className="detail-row detail-row--compact">
-                    <strong>{event.summary ?? '(no title)'}</strong>
-                    <span>{event.start ?? '-'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card__header">
-              <div>
-                <h2>Microsoft 365</h2>
-              </div>
-            </div>
-
-            {msError && <div className="alert alert--error">{msError}</div>}
-
-            <div className="stack">
-              <p className="field__hint">
-                .env에 MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_USER_EMAIL을 설정하세요.
-              </p>
-              <label className="field">
-                <span>캘린더 ID</span>
-                <input value={msCalendarId} onChange={(event) => setMsCalendarId(event.target.value)} placeholder="calendar" />
-              </label>
-              <label className="field">
-                <span>시작 날짜</span>
-                <input value={msTimeMin} onChange={(event) => setMsTimeMin(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>종료 날짜</span>
-                <input value={msTimeMax} onChange={(event) => setMsTimeMax(event.target.value)} />
-              </label>
-              <button className="button button--ghost" onClick={() => void handleMicrosoftFetch()} disabled={msLoading}>
-                일정 불러오기
+              <button
+                className="ai-suggestion"
+                onClick={() => void handlePredict()}
+                disabled={aiLoading}
+              >
+                <span className="ai-suggestion-icon"><TrendingUp size={14} /></span>
+                <span>바쁜 날 예측</span>
               </button>
-              <div className="stack">
-                {msEvents.slice(0, 5).map((event, index) => (
-                  <div key={`${event.summary ?? 'ms'}-${index}`} className="detail-row detail-row--compact">
-                    <strong>{event.summary ?? '(no title)'}</strong>
-                    <span>{event.start ?? '-'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card__header">
-              <div>
-                <h2>AI 분석</h2>
-              </div>
-            </div>
-
-            {aiError && <div className="alert alert--error">{aiError}</div>}
-
-            <div className="stack">
-              <div className="toolbar">
-                <button className="button button--ghost" onClick={() => void handleSummarize()} disabled={aiLoading}>
-                  일정 요약
-                </button>
-                <button className="button button--ghost" onClick={() => void handlePredict()} disabled={aiLoading}>
-                  바쁜 날 예측
-                </button>
-              </div>
-              <label className="field">
-                <span>예측 기간 (개월)</span>
-                <input type="number" min="1" max="12" value={predictMonths} onChange={(event) => setPredictMonths(Number(event.target.value))} />
-              </label>
-              <button className="button button--primary" onClick={() => void handleFreeDays()} disabled={aiLoading}>
-                빈 날짜 찾기
+              <button
+                className="ai-suggestion"
+                onClick={() => void handleFreeDays()}
+                disabled={aiLoading}
+              >
+                <span className="ai-suggestion-icon"><Calendar size={14} /></span>
+                <span>빈 날짜 찾기</span>
               </button>
-              <label className="field">
-                <span>시작 날짜</span>
-                <input value={freeStart} onChange={(event) => setFreeStart(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>종료 날짜</span>
-                <input value={freeEnd} onChange={(event) => setFreeEnd(event.target.value)} />
-              </label>
-              {summaryText && (
-                <div className="panel panel--soft">
-                  <h3>요약</h3>
-                  <p>{summaryText}</p>
-                </div>
-              )}
-              {predictDates.length > 0 && (
-                <div className="panel panel--soft">
-                  <h3>예측 날짜</h3>
-                  <p>{predictDates.join(', ')}</p>
-                </div>
-              )}
-              {freeDays.length > 0 && (
-                <div className="panel panel--soft">
-                  <h3>빈 날짜</h3>
-                  <p>{freeDays.join(', ')}</p>
-                </div>
-              )}
             </div>
-          </section>
+
+            <div className="field" style={{ marginTop: '12px' }}>
+              <label className="field-label">예측 기간 (개월)</label>
+              <input
+                className="field-input"
+                type="number"
+                min="1"
+                max="12"
+                value={predictMonths}
+                onChange={(e) => setPredictMonths(Number(e.target.value))}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="field">
+                <label className="field-label">시작</label>
+                <input
+                  className="field-input"
+                  value={freeStart}
+                  onChange={(e) => setFreeStart(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label">종료</label>
+                <input
+                  className="field-input"
+                  value={freeEnd}
+                  onChange={(e) => setFreeEnd(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {summaryText && (
+              <div className="schedule-item" style={{ marginTop: '12px' }}>
+                <div className="schedule-item-content">
+                  <div className="schedule-item-title">요약</div>
+                  <div className="markdown-body"><ReactMarkdown>{summaryText}</ReactMarkdown></div>
+                </div>
+              </div>
+            )}
+
+            {predictDates.length > 0 && (
+              <div className="schedule-item" style={{ marginTop: '12px' }}>
+                <div className="schedule-item-content">
+                  <div className="schedule-item-title">예측 날짜</div>
+                  <div className="schedule-item-category">{predictDates.join(', ')}</div>
+                </div>
+              </div>
+            )}
+
+            {freeDays.length > 0 && (
+              <div className="schedule-item" style={{ marginTop: '12px' }}>
+                <div className="schedule-item-content">
+                  <div className="schedule-item-title">빈 날짜</div>
+                  <div className="schedule-item-category">{freeDays.join(', ')}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </aside>
       </main>
 
-      {!isAuthenticated && (
-        <div className="modal-backdrop modal-backdrop--login">
-          <div className="modal modal--login" role="dialog" aria-modal="true" aria-labelledby="login-title">
-            <div className="card__header">
-              <div>
-                <h2 id="login-title">로그인</h2>
+      {/* FAB Button */}
+      <motion.button
+        className="fab"
+        onClick={() => openAddModal()}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="fab-icon">+</span>
+        <span>일정 추가</span>
+      </motion.button>
+
+      {/* Login Modal */}
+      <AnimatePresence>
+        {!isAuthenticated && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="modal login-modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title">로그인</h2>
               </div>
-            </div>
+              <div className="modal-body">
+                <div className="login-tabs">
+                  <button
+                    className={`login-tab ${authMode === 'login' ? 'login-tab--active' : ''}`}
+                    onClick={() => setAuthMode('login')}
+                  >
+                    로그인
+                  </button>
+                  <button
+                    className={`login-tab ${authMode === 'register' ? 'login-tab--active' : ''}`}
+                    onClick={() => setAuthMode('register')}
+                  >
+                    회원가입
+                  </button>
+                </div>
 
-            {authError && <div className="alert alert--error">{authError}</div>}
-            {authMessage && <div className="alert alert--success">{authMessage}</div>}
+                {authError && <div className="alert alert-error">{authError}</div>}
+                {authMessage && <div className="alert alert-success">{authMessage}</div>}
 
-            <div className="stack">
-              <label className="field">
-                <span>Email</span>
-                <input value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} type="email" />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} type="password" />
-              </label>
-              <label className="field field--inline">
-                <input
-                  className='check_box'
-                  type="checkbox"
-                  checked={authRememberMe}
-                  onChange={(event) => setAuthRememberMe(event.target.checked)}
-                />
-                <span>로그인 유지</span>
-              </label>
-              <div className="toolbar toolbar--end">
-                <button className="button button--ghost" onClick={() => void handleRegister()} disabled={authLoading}>
-                  회원가입
+                <div className="field">
+                  <label className="field-label">이메일</label>
+                  <input
+                    className="field-input"
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                <div className="field">
+                  <label className="field-label">비밀번호</label>
+                  <input
+                    className="field-input"
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                {authMode === 'login' && (
+                  <div className="field-checkbox">
+                    <input
+                      type="checkbox"
+                      id="remember-me"
+                      checked={authRememberMe}
+                      onChange={(e) => setAuthRememberMe(e.target.checked)}
+                    />
+                    <label htmlFor="remember-me" className="field-label">로그인 유지</label>
+                  </div>
+                )}
+
+                <div className="modal-footer" style={{ border: 'none', padding: '16px 0 0' }}>
+                  {authMode === 'login' ? (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => void handleLogin()}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? '로그인 중...' : '로그인'}
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => void handleRegister()}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? '가입 중...' : '회원가입'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Schedule Modal */}
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setModalOpen(false)}
+          >
+            <motion.div
+              className="modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title">일정 추가</h2>
+                <button className="modal-close" onClick={() => setModalOpen(false)}>
+                  <X width={16} height={16} />
                 </button>
-                <button className="button button--primary" onClick={() => void handleLogin()} disabled={authLoading}>
-                  로그인
-                </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="modal-body">
+                <div className="field">
+                  <label className="field-label">제목</label>
+                  <input
+                    className="field-input"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="일정 제목"
+                  />
+                </div>
 
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <div className="card__header">
-              <div>
-                <h2>일정 추가</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="field">
+                    <label className="field-label">시작</label>
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={startLocal}
+                      onChange={(e) => setStartLocal(e.target.value)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label className="field-label">종료</label>
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={endLocal}
+                      onChange={(e) => setEndLocal(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">분류</label>
+                  <select
+                    className="field-select"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as ScheduleCategory)}
+                  >
+                    <option value="appointment">약속</option>
+                    <option value="competition">대회</option>
+                    <option value="schedule">스케줄</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">메모</label>
+                  <textarea
+                    className="field-textarea"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="일정 메모 (선택사항)"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="stack">
-              <label className="field">
-                <span>시작</span>
-                <input type="datetime-local" value={startLocal} onChange={(event) => setStartLocal(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>종료</span>
-                <input type="datetime-local" value={endLocal} onChange={(event) => setEndLocal(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>제목</span>
-                <input value={title} onChange={(event) => setTitle(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>분류</span>
-                <select value={category} onChange={(event) => setCategory(event.target.value as ScheduleCategory)}>
-                  <option value="appointment">약속</option>
-                  <option value="competition">대회</option>
-                  <option value="schedule">스케줄</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>메모</span>
-                <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
-              </label>
-              <div className="toolbar toolbar--end">
-                <button className="button button--ghost" onClick={() => setModalOpen(false)}>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>
                   취소
                 </button>
-                <button className="button button--primary" onClick={() => void handleCreateSchedule()}>
+                <button className="btn btn-primary" onClick={() => void handleCreateSchedule()}>
                   저장
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Schedule Modal */}
+      <AnimatePresence>
+        {editModalOpen && editingSchedule && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setEditModalOpen(false)}
+          >
+            <motion.div
+              className="modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title">일정 수정</h2>
+                <button className="modal-close" onClick={() => setEditModalOpen(false)}>
+                  <X width={16} height={16} />
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="field">
+                  <label className="field-label">제목</label>
+                  <input
+                    className="field-input"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="일정 제목"
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="field">
+                    <label className="field-label">시작</label>
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={startLocal}
+                      onChange={(e) => setStartLocal(e.target.value)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label className="field-label">종료</label>
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={endLocal}
+                      onChange={(e) => setEndLocal(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">분류</label>
+                  <select
+                    className="field-select"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as ScheduleCategory)}
+                  >
+                    <option value="appointment">약속</option>
+                    <option value="competition">대회</option>
+                    <option value="schedule">스케줄</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">메모</label>
+                  <textarea
+                    className="field-textarea"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="일정 메모 (선택사항)"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setEditModalOpen(false)}>
+                  취소
+                </button>
+                <button className="btn btn-primary" onClick={() => void handleUpdateSchedule()}>
+                  저장
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Integration Modal */}
+      <AnimatePresence>
+        {integrationModalOpen && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIntegrationModalOpen(false)}
+          >
+            <motion.div
+              className="modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '560px' }}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title">연동 관리</h2>
+                <button className="modal-close" onClick={() => setIntegrationModalOpen(false)}>
+                  <X width={16} height={16} />
+                </button>
+              </div>
+              <div className="modal-body">
+                {/* Google Calendar */}
+                <div className="schedule-section" style={{ marginBottom: '16px' }}>
+                  <div className="schedule-section-header">
+                    <span className="schedule-section-title">Google 캘린더</span>
+                  </div>
+                  {googleError && <div className="alert alert-error">{googleError}</div>}
+                  <a className="btn btn-primary" href="/google/login" style={{ marginBottom: '12px', textDecoration: 'none' }}>
+                    Google 계정 연결
+                  </a>
+                  <div className="field">
+                    <label className="field-label">캘린더 ID</label>
+                    <input
+                      className="field-input"
+                      value={googleCalendarId}
+                      onChange={(e) => setGoogleCalendarId(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="field">
+                      <label className="field-label">시작 날짜</label>
+                      <input
+                        className="field-input"
+                        value={googleTimeMin}
+                        onChange={(e) => setGoogleTimeMin(e.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label className="field-label">종료 날짜</label>
+                      <input
+                        className="field-input"
+                        value={googleTimeMax}
+                        onChange={(e) => setGoogleTimeMax(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => void handleGoogleFetch()}
+                    disabled={googleLoading}
+                  >
+                    {googleLoading ? '불러오는 중...' : '일정 불러오기'}
+                  </button>
+                  {googleEvents.length > 0 && (
+                    <div className="schedule-list" style={{ marginTop: '12px' }}>
+                      {googleEvents.slice(0, 5).map((event, index) => (
+                        <div key={`${event.summary ?? 'event'}-${index}`} className="schedule-item">
+                          <div className="schedule-item-content">
+                            <div className="schedule-item-title">{event.summary ?? '(no title)'}</div>
+                            <div className="schedule-item-category">{event.start ?? '-'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Microsoft 365 */}
+                <div className="schedule-section">
+                  <div className="schedule-section-header">
+                    <span className="schedule-section-title">Microsoft 365</span>
+                  </div>
+                  {msError && <div className="alert alert-error">{msError}</div>}
+                  <a className="btn btn-primary" href="/microsoft/login" style={{ marginBottom: '12px', textDecoration: 'none' }}>
+                    Microsoft 계정 연결
+                  </a>
+                  <div className="field">
+                    <label className="field-label">캘린더 ID</label>
+                    <input
+                      className="field-input"
+                      value={msCalendarId}
+                      onChange={(e) => setMsCalendarId(e.target.value)}
+                      placeholder="(비우면 기본 캘린더)"
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="field">
+                      <label className="field-label">시작 날짜</label>
+                      <input
+                        className="field-input"
+                        value={msTimeMin}
+                        onChange={(e) => setMsTimeMin(e.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label className="field-label">종료 날짜</label>
+                      <input
+                        className="field-input"
+                        value={msTimeMax}
+                        onChange={(e) => setMsTimeMax(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => void handleMicrosoftFetch()}
+                    disabled={msLoading}
+                  >
+                    {msLoading ? '불러오는 중...' : '일정 불러오기'}
+                  </button>
+                  {msEvents.length > 0 && (
+                    <div className="schedule-list" style={{ marginTop: '12px' }}>
+                      {msEvents.slice(0, 5).map((event, index) => (
+                        <div key={`${event.summary ?? 'ms'}-${index}`} className="schedule-item">
+                          <div className="schedule-item-content">
+                            <div className="schedule-item-title">{event.summary ?? '(no title)'}</div>
+                            <div className="schedule-item-category">{event.start ?? '-'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
