@@ -547,11 +547,6 @@ function App() {
       <div className="app-content">
       {/* Header */}
       <header className="header">
-        <div className="header-brand">
-          <img src={logoDayflow} width={32} height={32} alt="logo" />
-          <h1>DayFlow</h1>
-        </div>
-
         <div className="header-search">
           <input type="text" placeholder="일정 검색..." />
         </div>

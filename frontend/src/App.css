@@ -131,25 +131,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-brand img {
-  width: 32px;
-  height: 32px;
-}
-
-.header-brand h1 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--primary);
-}
-
 .header-search {
   position: absolute;
   left: 50%;
