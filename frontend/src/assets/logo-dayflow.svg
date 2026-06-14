@@ -1,16 +1,37 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Rounded square base -->
-  <rect x="8" y="8" width="112" height="112" rx="24" fill="#8B5CF6"/>
+  <defs>
+    <linearGradient id="grad1" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="0" y1="0" x2="128" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#7DD3FC"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Sun: half circle peeking over horizon -->
-  <circle cx="64" cy="58" r="22" fill="#FBBF24"/>
+  <!-- Calendar base -->
+  <rect x="16" y="24" width="96" height="88" rx="12" fill="url(#grad1)"/>
 
-  <!-- Horizon line (the "day" boundary) -->
-  <rect x="24" y="76" width="80" height="3" rx="1.5" fill="rgba(255,255,255,0.95)"/>
+  <!-- Calendar header bar -->
+  <rect x="16" y="24" width="96" height="28" rx="12" fill="url(#grad2)"/>
+  <rect x="16" y="40" width="96" height="12" fill="url(#grad2)"/>
 
-  <!-- Flow waves below horizon (3 stacked curves) -->
-  <path d="M32 92 Q44 86 56 92 Q68 98 80 92 Q90 87 96 92"
-        stroke="rgba(255,255,255,0.95)" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <path d="M32 104 Q44 98 56 104 Q68 110 80 104 Q90 99 96 104"
-        stroke="rgba(255,255,255,0.7)" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Calendar rings -->
+  <rect x="36" y="16" width="8" height="16" rx="4" fill="#8B5CF6"/>
+  <rect x="84" y="16" width="8" height="16" rx="4" fill="#8B5CF6"/>
+
+  <!-- Calendar grid dots (3x3) representing days -->
+  <circle cx="40" cy="72" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="64" cy="72" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="88" cy="72" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="40" cy="88" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="64" cy="88" r="5" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="88" cy="88" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="40" cy="104" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="64" cy="104" r="5" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="88" cy="104" r="5" fill="rgba(255,255,255,0.9)"/>
+
+  <!-- Flow line curving through -->
+  <path d="M28 64 Q48 52 64 64 Q80 76 100 64" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round" fill="none"/>
 </svg>
