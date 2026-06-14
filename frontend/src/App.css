@@ -11,8 +11,7 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
   gap: 24px;
   padding: 12px 24px;
@@ -26,7 +25,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-self: start;
 }
 
 .header-brand img {
@@ -44,7 +42,7 @@
 
 .header-search {
   width: 420px;
-  justify-self: center;
+  flex-shrink: 0;
 }
 
 .header-search input {
@@ -73,7 +71,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-self: end;
+  margin-left: auto;
 }
 
 .header-btn {
