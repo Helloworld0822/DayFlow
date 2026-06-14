@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import heroImg from './assets/hero.png'
 import logoDayflow from './assets/logo-dayflow.svg'
 import './App.css'
 import {
@@ -182,9 +181,7 @@ function App() {
   const [msError, setMsError] = useState('')
   const [msLoading, setMsLoading] = useState(false)
 
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [integrationModalOpen, setIntegrationModalOpen] = useState(false)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
   const dateEventMap = useMemo(() => buildDateEventMap(schedules), [schedules])
@@ -219,16 +216,6 @@ function App() {
     void refreshSchedules()
     void refreshProtectedProfile()
   }, [refreshSchedules, refreshProtectedProfile])
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const prevMonth = useCallback(() => {
     if (viewMonth === 0) {
@@ -377,7 +364,6 @@ function App() {
       await logoutUser()
       setAuthProfile(null)
       setAuthMessage('로그아웃했습니다.')
-      setProfileMenuOpen(false)
     } catch (error) {
       setAuthError(getErrorMessage(error))
     }
@@ -493,83 +479,60 @@ function App() {
       {/* Left Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-top">
-          <button className="sidebar-btn" title="알림">
-            <Bell width={20} height={20} />
-          </button>
+          {isAuthenticated && authProfile && (
+            <div className="sidebar-profile" aria-label="프로필">
+              {getInitials(authProfile.email)}
+            </div>
+          )}
         </div>
 
         <div className="sidebar-bottom">
           <button
-            className="sidebar-btn"
+            className="sidebar-btn sidebar-btn--icon-label"
+            onClick={() => setIntegrationModalOpen(true)}
+            title="연동 관리"
+          >
+            <Link size={18} />
+            <span>연동</span>
+          </button>
+
+          {isAuthenticated ? (
+            <button
+              className="sidebar-btn sidebar-btn--icon-label"
+              onClick={() => void handleLogout()}
+              title="로그아웃"
+            >
+              <LogOut size={18} />
+              <span>로그아웃</span>
+            </button>
+          ) : (
+            <button
+              className="sidebar-btn sidebar-btn--icon-label"
+              onClick={() => undefined}
+              title="로그인"
+            >
+              <Key size={18} />
+              <span>로그인</span>
+            </button>
+          )}
+
+          <button
+            className="sidebar-btn sidebar-btn--icon-label"
             onClick={toggleTheme}
             title={theme === 'dark' ? '화이트 모드' : '다크 모드'}
           >
             {theme === 'dark' ? (
-              <Sun width={20} height={20} />
+              <>
+                <Sun size={18} />
+                <span>라이트</span>
+              </>
             ) : (
-              <Moon width={20} height={20} />
+              <>
+                <Moon size={18} />
+                <span>다크</span>
+              </>
             )}
           </button>
-
-          <div className="sidebar-profile-wrapper" ref={profileMenuRef}>
-            <button
-              className="sidebar-profile"
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            >
-              {isAuthenticated && authProfile ? getInitials(authProfile.email) : '?'}
-            </button>
-
-            <AnimatePresence>
-              {profileMenuOpen && (
-                <motion.div
-                  className="profile-menu"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {isAuthenticated && authProfile && (
-                    <div className="profile-menu-header">
-                      <div className="profile-menu-email">{authProfile.email}</div>
-                    </div>
-                  )}
-
-                  <button
-                    className="profile-menu-item"
-                    onClick={() => {
-                      setIntegrationModalOpen(true)
-                      setProfileMenuOpen(false)
-                    }}
-                  >
-                    <span className="profile-menu-item-icon"><Link size={16} /></span>
-                    <span>연동 관리</span>
-                  </button>
-
-                  <div className="profile-menu-divider" />
-
-                  {isAuthenticated ? (
-                    <button
-                      className="profile-menu-item"
-                      onClick={() => void handleLogout()}
-                    >
-                      <span className="profile-menu-item-icon"><LogOut size={16} /></span>
-                      <span>로그아웃</span>
-                    </button>
-                  ) : (
-                    <button
-                      className="profile-menu-item"
-                      onClick={() => {
-                        setProfileMenuOpen(false)
-                      }}
-                    >
-                      <span className="profile-menu-item-icon"><Key size={16} /></span>
-                      <span>로그인</span>
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </div>
       </aside>
 
@@ -583,6 +546,12 @@ function App() {
 
         <div className="header-search">
           <input type="text" placeholder="일정 검색..." />
+        </div>
+
+        <div className="header-actions">
+          <button className="header-btn" title="알림">
+            <Bell width={20} height={20} />
+          </button>
         </div>
       </header>
 
