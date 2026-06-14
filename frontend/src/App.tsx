@@ -231,24 +231,22 @@ function App() {
   }, [])
 
   const prevMonth = useCallback(() => {
-    setViewMonth((month) => {
-      if (month === 0) {
-        setViewYear((year) => year - 1)
-        return 11
-      }
-      return month - 1
-    })
-  }, [])
+    if (viewMonth === 0) {
+      setViewMonth(11)
+      setViewYear(viewYear - 1)
+    } else {
+      setViewMonth(viewMonth - 1)
+    }
+  }, [viewMonth, viewYear])
 
   const nextMonth = useCallback(() => {
-    setViewMonth((month) => {
-      if (month === 11) {
-        setViewYear((year) => year + 1)
-        return 0
-      }
-      return month + 1
-    })
-  }, [])
+    if (viewMonth === 11) {
+      setViewMonth(0)
+      setViewYear(viewYear + 1)
+    } else {
+      setViewMonth(viewMonth + 1)
+    }
+  }, [viewMonth, viewYear])
 
   const goToToday = useCallback(() => {
     const now = new Date()
