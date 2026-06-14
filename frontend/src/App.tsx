@@ -490,23 +490,20 @@ function App() {
 
   return (
     <div className="app-shell">
-      {/* Header */}
-      <header className="header">
-        <div className="header-brand">
-          <img src={logoDayflow} width={32} height={32} alt="logo" />
-          <h1>DayFlow</h1>
-        </div>
-
-        <div className="header-search">
-          <input type="text" placeholder="일정 검색..." />
-        </div>
-
-        <div className="header-actions">
-          <button className="header-btn" title="알림">
+      {/* Left Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <button className="sidebar-btn" title="알림">
             <Bell width={20} height={20} />
           </button>
+        </div>
 
-          <button className="header-btn" onClick={toggleTheme} title={theme === 'dark' ? '화이트 모드' : '다크 모드'}>
+        <div className="sidebar-bottom">
+          <button
+            className="sidebar-btn"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? '화이트 모드' : '다크 모드'}
+          >
             {theme === 'dark' ? (
               <Sun width={20} height={20} />
             ) : (
@@ -514,9 +511,9 @@ function App() {
             )}
           </button>
 
-          <div className="header-profile-wrapper" ref={profileMenuRef}>
+          <div className="sidebar-profile-wrapper" ref={profileMenuRef}>
             <button
-              className="header-profile"
+              className="sidebar-profile"
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             >
               {isAuthenticated && authProfile ? getInitials(authProfile.email) : '?'}
@@ -526,9 +523,9 @@ function App() {
               {profileMenuOpen && (
                 <motion.div
                   className="profile-menu"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
                   {isAuthenticated && authProfile && (
@@ -573,6 +570,19 @@ function App() {
               )}
             </AnimatePresence>
           </div>
+        </div>
+      </aside>
+
+      <div className="app-content">
+      {/* Header */}
+      <header className="header">
+        <div className="header-brand">
+          <img src={logoDayflow} width={32} height={32} alt="logo" />
+          <h1>DayFlow</h1>
+        </div>
+
+        <div className="header-search">
+          <input type="text" placeholder="일정 검색..." />
         </div>
       </header>
 
@@ -837,6 +847,7 @@ function App() {
           </div>
         </aside>
       </main>
+      </div>
 
       {/* FAB Button */}
       <motion.button
