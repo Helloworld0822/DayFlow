@@ -107,29 +107,19 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  background: var(--bg-card);
+  background: var(--primary);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 50%;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
   transition: all 0.2s ease;
 }
 
 .header-profile:hover {
-  background: var(--bg-card-hover);
+  background: var(--primary-dark);
   border-color: var(--border-medium);
-}
-
-.header-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
 }
 
 /* ===== Main Layout ===== */

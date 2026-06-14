@@ -519,9 +519,7 @@ function App() {
               className="header-profile"
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             >
-              <div className="header-avatar">
-                {isAuthenticated && authProfile ? getInitials(authProfile.email) : '?'}
-              </div>
+              {isAuthenticated && authProfile ? getInitials(authProfile.email) : '?'}
             </button>
 
             <AnimatePresence>
