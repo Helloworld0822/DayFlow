@@ -20,7 +20,6 @@
   --text-muted: rgba(255, 255, 255, 0.5);
   --glass-bg: rgba(255, 255, 255, 0.04);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
   --success: #10B981;
   --success-bg: rgba(16, 185, 129, 0.15);
   --danger: #EF4444;
@@ -49,7 +48,6 @@
   --text-muted: rgba(0, 0, 0, 0.45);
   --glass-bg: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   --success: #059669;
   --success-bg: rgba(5, 150, 105, 0.1);
   --danger: #DC2626;
@@ -110,8 +108,8 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  box-shadow: var(--glass-shadow);
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 .glass-card-hover {
@@ -121,8 +119,6 @@ body {
 .glass-card-hover:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-medium);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* Custom Scrollbar */

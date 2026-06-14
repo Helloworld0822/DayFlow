@@ -11,9 +11,10 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  gap: 24px;
   padding: 12px 24px;
   background: var(--header-bg, rgba(5, 8, 22, 0.8));
   backdrop-filter: blur(12px);
@@ -25,6 +26,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-self: start;
 }
 
 .header-brand img {
@@ -37,16 +39,12 @@
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary);
 }
 
 .header-search {
-  flex: 1;
-  max-width: 400px;
-  margin: 0 24px;
+  width: 420px;
+  justify-self: center;
 }
 
 .header-search input {
@@ -75,6 +73,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
 }
 
 .header-btn {
@@ -124,7 +123,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,25 +374,24 @@
   align-items: center;
   gap: 8px;
   padding: 16px 24px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary);
   border: none;
   border-radius: 8px;
   color: white;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+  box-shadow: none;
   transition: all 0.2s ease;
   z-index: 30;
 }
 
 .fab:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.5);
+  background: var(--primary-dark);
 }
 
 .fab:active {
-  transform: translateY(0) scale(0.98);
+  background: var(--primary);
 }
 
 .fab-icon {
@@ -533,8 +531,8 @@
 
 /* ===== AI Section ===== */
 .ai-section {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(96, 165, 250, 0.1));
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 16px;
 }
@@ -549,7 +547,7 @@
 .ai-icon {
   width: 24px;
   height: 24px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -639,7 +637,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  box-shadow: none;
 }
 
 .modal-header {
@@ -790,18 +788,17 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  box-shadow: none;
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+  background: var(--primary-dark);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  background: var(--primary-dark);
 }
 
 .btn-secondary {
@@ -928,7 +925,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
   overflow: hidden;
   z-index: 60;
 }
