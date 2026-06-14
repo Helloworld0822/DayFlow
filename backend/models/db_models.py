@@ -24,9 +24,9 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    start = Column(DateTime(timezone=True), nullable=False)
-    end = Column(DateTime(timezone=True), nullable=False)
+    start = Column(DateTime, nullable=False)
+    end = Column(DateTime, nullable=False)
     title = Column(String(256), nullable=False)
     description = Column(String(1024), nullable=True)
     category = Column(Enum(CategoryEnum), nullable=False, default=CategoryEnum.appointment)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
