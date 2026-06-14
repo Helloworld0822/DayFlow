@@ -210,7 +210,7 @@
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 24px;
-  padding: 24px;
+  padding: 24px 24px 120px;
   flex: 1;
   max-width: 1600px;
   margin: 0 auto;
