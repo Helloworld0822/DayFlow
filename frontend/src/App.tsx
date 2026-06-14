@@ -481,7 +481,10 @@ function App() {
         <div className="sidebar-top">
           <div className="sidebar-brand">
             <img src={logoDayflow} width={32} height={32} alt="logo" />
-            <span className="sidebar-brand-name">DayFlow</span>
+            <div className="sidebar-brand-text">
+              <span className="sidebar-brand-name">DayFlow</span>
+              <span className="sidebar-brand-desc">AI로 똑똑하게 관리하는 일정</span>
+            </div>
           </div>
 
           {isAuthenticated && authProfile && (

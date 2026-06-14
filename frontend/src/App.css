@@ -46,6 +46,14 @@
 .sidebar-brand img {
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
 }
 
 .sidebar-brand-name {
@@ -53,6 +61,15 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--primary);
+}
+
+.sidebar-brand-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-profile {
