@@ -479,16 +479,22 @@ function App() {
       {/* Left Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-top">
+          <div className="sidebar-brand">
+            <img src={logoDayflow} width={32} height={32} alt="logo" />
+            <span className="sidebar-brand-name">DayFlow</span>
+          </div>
+
           {isAuthenticated && authProfile && (
-            <div className="sidebar-profile" aria-label="프로필">
-              {getInitials(authProfile.email)}
+            <div className="sidebar-profile">
+              <div className="sidebar-profile-avatar">{getInitials(authProfile.email)}</div>
+              <span className="sidebar-profile-name">{authProfile.email}</span>
             </div>
           )}
         </div>
 
         <div className="sidebar-bottom">
           <button
-            className="sidebar-btn sidebar-btn--icon-label"
+            className="sidebar-link"
             onClick={() => setIntegrationModalOpen(true)}
             title="연동 관리"
           >
@@ -498,7 +504,7 @@ function App() {
 
           {isAuthenticated ? (
             <button
-              className="sidebar-btn sidebar-btn--icon-label"
+              className="sidebar-link"
               onClick={() => void handleLogout()}
               title="로그아웃"
             >
@@ -507,7 +513,7 @@ function App() {
             </button>
           ) : (
             <button
-              className="sidebar-btn sidebar-btn--icon-label"
+              className="sidebar-link"
               onClick={() => undefined}
               title="로그인"
             >
@@ -516,8 +522,10 @@ function App() {
             </button>
           )}
 
+          <br />
+
           <button
-            className="sidebar-btn sidebar-btn--icon-label"
+            className="sidebar-link"
             onClick={toggleTheme}
             title={theme === 'dark' ? '화이트 모드' : '다크 모드'}
           >
