@@ -6,3 +6,11 @@ __pycache__/
 node_modules/
 dist/
 .env
+
+# Design review / debug artifacts
+*.png
+dev.db
+
+# Tooling caches
+.playwright-mcp/
+.omo/
